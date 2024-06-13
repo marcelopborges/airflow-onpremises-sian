@@ -115,10 +115,10 @@ def process_and_load_geodata_to_gcp(**kwargs):
     df.to_parquet(file_path, index=False)
 
     # Envia o arquivo Parquet para o bucket GCP
-    bucket_name = Variable.get("gcp_bucket_name")
+    bucket_name = Variable.get("hp_gcp_bucket_name_raw")
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(f"geodata/geodata_{formatted_date}.parquet")
+    blob = bucket.blob(f"mix/geodata/geodata_{formatted_date}.parquet")
     blob.upload_from_filename(file_path)
 
     logging.info(f"Arquivo Parquet enviado para o bucket GCP: {file_path}")
@@ -155,10 +155,10 @@ def insert_dag_metadata(**kwargs):
         json.dump(metadata, f)
 
     # Envia o arquivo JSON para o bucket GCP
-    bucket_name = Variable.get("gcp_bucket_name")
+    bucket_name = Variable.get("hp_gcp_bucket_name_raw")
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(f"metadata/dag_metadata_{execution_date}.json")
+    blob = bucket.blob(f"mix/metadata/pipeline_hp_mix_telemetics_{execution_date}.json")
     blob.upload_from_filename(file_path)
 
     logging.info(f"Arquivo JSON de metadados enviado para o bucket GCP: {file_path}")
@@ -178,7 +178,7 @@ def mark_end(**context):
 
 @dag(start_date=datetime(2024, 2, 26), schedule='30 11 * * *', catchup=True,
      tags=['airbyte', 'HP', 'Mix-Telematics'])
-def pipeline_hp_telemetics():
+def pipeline_hp_mix_telemetics_geodata():
     start = EmptyOperator(task_id='start')
 
     start_task = PythonOperator(
@@ -227,4 +227,4 @@ def pipeline_hp_telemetics():
     start >> start_task >> get_bearer_token >> get_data >> process_data >> end_task >> create_metadata >> end
 
 
-dag = pipeline_hp_telemetics()
+dag = pipeline_hp_mix_telemetics_geodata()
