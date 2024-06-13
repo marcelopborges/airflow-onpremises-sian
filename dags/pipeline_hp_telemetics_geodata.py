@@ -114,7 +114,7 @@ def process_and_load_geodata_to_gcp(**kwargs):
     df = pd.DataFrame(records)
 
     # Salva o DataFrame em formato Parquet
-    file_path = f"../tmp/geodata/geodata_{formatted_date}.parquet"
+    file_path = f"../tmp/geodata/geodata_{formatted_date}.parquet" #salvando arquivo localmente
     df.to_parquet(file_path, index=False)
 
     # # Envia o arquivo Parquet para o bucket GCP
