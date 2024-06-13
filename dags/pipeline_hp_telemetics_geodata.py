@@ -6,7 +6,6 @@ from airflow.operators.python import PythonOperator
 from airflow.decorators import dag
 from airflow.operators.empty import EmptyOperator
 from datetime import datetime, timedelta
-
 from requests import get, post
 import json
 import hashlib
@@ -160,7 +159,7 @@ def insert_dag_metadata(**kwargs):
     gcs_hook = GCSHook(gcp_conn_id='gcp')
     gcs_hook.upload(
         bucket_name=hp_gcp_bucket_name_raw,
-        object_name=f"mix/metadata/pipeline_hp_mix_telemetics_{execution_date}.json",
+        object_name=f"mix/metadata/pipeline_hp_mix_telemetics/pipeline_hp_mix_telemetics_{execution_date}.json",
         data=metadata_buffer.getvalue(),
         mime_type='application/json'
     )
@@ -177,7 +176,7 @@ def mark_end(**context):
     context['ti'].xcom_push(key='end_time', value=end)
     print(f"Mark end at {end}")
 
-@dag(start_date=datetime(2024, 6, 10), schedule='30 11 * * *', catchup=True,
+@dag(start_date=datetime(2024, 2, 26), schedule='30 11 * * *', catchup=True,
      tags=['airbyte', 'HP', 'Mix-Telematics'])
 def pipeline_hp_mix_telemetics_geodata():
     start = EmptyOperator(task_id='start')
