@@ -7,14 +7,14 @@ from airflow.decorators import dag
 from airflow.operators.empty import EmptyOperator
 from datetime import datetime, timedelta
 
-from airflow.providers.google.cloud.transfers.local_to_gcs import LocalFilesystemToGCSOperator
 from requests import get, post
 import json
 import hashlib
 import pandas as pd
 from google.cloud import storage
+from io import BytesIO
 
-#Variables
+# Variables
 last_call_timestamp = None
 hp_mix_url_identity = Variable.get("hp_mix_url_identity")
 hp_mix_username_access_identity = Variable.get("hp_mix_username_access_identity")
@@ -26,7 +26,6 @@ token_data = {
     "token": None,
     "timestamp": None
 }
-
 
 def get_token_bearer():
     global token_data
@@ -53,11 +52,9 @@ def get_token_bearer():
         else:
             raise Exception(f"Failed to get token: HTTP {response.status_code}")
 
-
 def generate_hash(*args):
     hash_input = "".join(args)
     return hashlib.sha256(hash_input.encode('utf-8')).hexdigest()
-
 
 def get_geodata(**kwargs):
     global last_call_timestamp
@@ -80,7 +77,6 @@ def get_geodata(**kwargs):
         return response.text
     else:
         raise Exception(f"Failed to get geodata: HTTP {response.status_code}")
-
 
 def process_and_load_geodata_to_gcp(**kwargs):
     execution_date = kwargs['logical_date']
@@ -113,26 +109,19 @@ def process_and_load_geodata_to_gcp(**kwargs):
 
     df = pd.DataFrame(records)
 
-    # Salva o DataFrame em formato Parquet
-    file_path = f"/home/suporte/airflow/tmp/geodata/geodata_{formatted_date}.parquet" #salvando arquivo localmente
-    df.to_parquet(file_path, index=False)
+    # Salva o DataFrame em formato Parquet no buffer
+    buffer = BytesIO()
+    df.to_parquet(buffer, index=False)
+    buffer.seek(0)
 
-    # # Envia o arquivo Parquet para o bucket GCP
-    # bucket_name = Variable.get("hp_gcp_bucket_name_raw")
-    # storage_client = storage.Client()
-    # bucket = storage_client.bucket(bucket_name)
-    # blob = bucket.blob(f"mix/geodata/geodata_{formatted_date}.parquet")
-    # blob.upload_from_filename(file_path)
+    # Envia o arquivo Parquet diretamente para o bucket GCP
+    bucket_name = hp_gcp_bucket_name_raw
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(f"mix/geodata/geodata_{formatted_date}.parquet")
+    blob.upload_from_file(buffer, content_type='application/octet-stream')
 
-    upload_to_gcs = LocalFilesystemToGCSOperator(
-        task_id="upload_to_gcs",
-        src=file_path,
-        dst=f"mix/geodata/geodata_{formatted_date}.parquet",
-        bucket=hp_gcp_bucket_name_raw
-    )
-
-    logging.info(f"Arquivo Parquet enviado para o bucket GCP: {file_path}")
-
+    logging.info(f"Arquivo Parquet enviado para o bucket GCP: geodata_{formatted_date}.parquet")
 
 def insert_dag_metadata(**kwargs):
     ti = kwargs['ti']
@@ -159,42 +148,30 @@ def insert_dag_metadata(**kwargs):
         "error_message": None
     }
 
-    # Salva os metadados em formato JSON
-    metadata_file_path = f"/home/suporte/airflow/tmp/metadados/dag_metadata_{execution_date}.json"
-    with open(metadata_file_path, 'w') as f:
-        json.dump(metadata, f)
+    # Salva os metadados em formato JSON no buffer
+    metadata_buffer = BytesIO()
+    metadata_buffer.write(json.dumps(metadata).encode('utf-8'))
+    metadata_buffer.seek(0)
 
-    # # Envia o arquivo JSON para o bucket GCP
-    # bucket_name = Variable.get("hp_gcp_bucket_name_raw")
-    # storage_client = storage.Client()
-    # bucket = storage_client.bucket(bucket_name)
-    # blob = bucket.blob(f"mix/metadata/pipeline_hp_mix_telemetics_{execution_date}.json")
-    # blob.upload_from_filename(file_path)
+    # Envia o arquivo JSON para o bucket GCP
+    bucket_name = hp_gcp_bucket_name_raw
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(f"mix/metadata/pipeline_hp_mix_telemetics_{execution_date}.json")
+    blob.upload_from_file(metadata_buffer, content_type='application/json')
 
-
-    upload_metadata_to_gcs = LocalFilesystemToGCSOperator(
-        task_id="upload_metadata_to_gcs",
-        src=metadata_file_path,
-        dst=f"mix/metadata/pipeline_hp_mix_telemetics_{execution_date}.parquet",
-        bucket=hp_gcp_bucket_name_raw
-    )
-    logging.info(f"Arquivo JSON de metadados enviado para o bucket GCP: {metadata_file_path}")
-
+    logging.info(f"Arquivo JSON de metadados enviado para o bucket GCP: pipeline_hp_mix_telemetics_{execution_date}.json")
 
 def mark_start(**context):
     start = datetime.now()
     context['ti'].xcom_push(key='start_time', value=start)
     print(f"Mark start at {start}")
 
-
 def mark_end(**context):
     end = datetime.now()
     context['ti'].xcom_push(key='end_time', value=end)
     print(f"Mark end at {end}")
 
-
-# @dag(start_date=datetime(2024, 2, 26), schedule='30 11 * * *', catchup=True,
-#      tags=['airbyte', 'HP', 'Mix-Telematics'])
 @dag(start_date=datetime(2024, 6, 10), schedule='30 11 * * *', catchup=True,
      tags=['airbyte', 'HP', 'Mix-Telematics'])
 def pipeline_hp_mix_telemetics_geodata():
@@ -244,6 +221,5 @@ def pipeline_hp_mix_telemetics_geodata():
     end = EmptyOperator(task_id='end')
 
     start >> start_task >> get_bearer_token >> get_data >> process_data >> end_task >> create_metadata >> end
-
 
 dag = pipeline_hp_mix_telemetics_geodata()
