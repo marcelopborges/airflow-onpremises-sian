@@ -13,6 +13,7 @@ import hashlib
 import pandas as pd
 from google.cloud import storage
 from io import BytesIO
+from airflow.providers.google.cloud.hooks.gcs import GCSHook
 
 # Variables
 last_call_timestamp = None
@@ -114,12 +115,14 @@ def process_and_load_geodata_to_gcp(**kwargs):
     df.to_parquet(buffer, index=False)
     buffer.seek(0)
 
-    # Envia o arquivo Parquet diretamente para o bucket GCP
-    bucket_name = hp_gcp_bucket_name_raw
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(f"mix/geodata/geodata_{formatted_date}.parquet")
-    blob.upload_from_file(buffer, content_type='application/octet-stream')
+    # Envia o arquivo Parquet diretamente para o bucket GCP usando GCSHook
+    gcs_hook = GCSHook(gcp_conn_id='gcp')
+    gcs_hook.upload(
+        bucket_name=hp_gcp_bucket_name_raw,
+        object_name=f"mix/geodata/geodata_{formatted_date}.parquet",
+        data=buffer.getvalue(),
+        mime_type='application/octet-stream'
+    )
 
     logging.info(f"Arquivo Parquet enviado para o bucket GCP: geodata_{formatted_date}.parquet")
 
@@ -153,12 +156,14 @@ def insert_dag_metadata(**kwargs):
     metadata_buffer.write(json.dumps(metadata).encode('utf-8'))
     metadata_buffer.seek(0)
 
-    # Envia o arquivo JSON para o bucket GCP
-    bucket_name = hp_gcp_bucket_name_raw
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(f"mix/metadata/pipeline_hp_mix_telemetics_{execution_date}.json")
-    blob.upload_from_file(metadata_buffer, content_type='application/json')
+    # Envia o arquivo JSON para o bucket GCP usando GCSHook
+    gcs_hook = GCSHook(gcp_conn_id='gcp')
+    gcs_hook.upload(
+        bucket_name=hp_gcp_bucket_name_raw,
+        object_name=f"mix/metadata/pipeline_hp_mix_telemetics_{execution_date}.json",
+        data=metadata_buffer.getvalue(),
+        mime_type='application/json'
+    )
 
     logging.info(f"Arquivo JSON de metadados enviado para o bucket GCP: pipeline_hp_mix_telemetics_{execution_date}.json")
 
