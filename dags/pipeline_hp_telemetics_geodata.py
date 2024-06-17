@@ -82,7 +82,7 @@ def process_and_load_geodata_to_gcp(**kwargs):
     execution_date = kwargs['logical_date']
     geodata_json = kwargs['ti'].xcom_pull(task_ids='get_geodata')
     data = json.loads(geodata_json)
-    execution_date = execution_date - timedelta(days=1)
+    # execution_date = execution_date - timedelta(days=1)
     formatted_date = execution_date.strftime("%Y-%m-%d")
     features = data.get("features", [])
 
