@@ -70,8 +70,13 @@ def get_token_sianet():
 
 def get_data_trip_made_sianet(**kwargs):
     logical_date = kwargs['logical_date']
+    logging.info(f"Original logical_date: {logical_date}")
+
     logical_date = logical_date - timedelta(days=1)
+    logging.info(f"Adjusted logical_date (D-1): {logical_date}")
+
     formatted_date = logical_date.strftime("%d/%m/%Y")
+    logging.info(f"Formatted date for API request: {formatted_date}")
 
     url = f"http://siannet.gestaosian.com/api/ConsultaViagens?data={formatted_date}&viagens=programadas"
     headers = {"Authorization": f"Bearer {get_token_sianet()}"}
@@ -87,7 +92,10 @@ def get_data_trip_made_sianet(**kwargs):
         raise Exception(f"Failed to get data: HTTP {response.status_code}")
 
 
+
 def process_and_load_trip_data_to_gcp(data, logical_date):
+    logging.info(f"Processing data for logical_date (D-1): {logical_date}")
+
     rows_to_insert = []
     for entry in data:
         try:
@@ -98,10 +106,8 @@ def process_and_load_trip_data_to_gcp(data, logical_date):
                 "re": entry.get('RE'),
                 "nome": entry.get('NOME'),
                 "dthr_saida": convert_datetime_with_time(entry.get('DTHR_SAIDA')) if entry.get('DTHR_SAIDA') else None,
-                "dthr_retorno": convert_datetime_with_time(entry.get('DTHR_RETORNO')) if entry.get(
-                    'DTHR_RETORNO') else None,
-                "dthr_chegada": convert_datetime_with_time(entry.get('DTHR_CHEGADA')) if entry.get(
-                    'DTHR_CHEGADA') else None
+                "dthr_retorno": convert_datetime_with_time(entry.get('DTHR_RETORNO')) if entry.get('DTHR_RETORNO') else None,
+                "dthr_chegada": convert_datetime_with_time(entry.get('DTHR_CHEGADA')) if entry.get('DTHR_CHEGADA') else None
             }
             rows_to_insert.append(row)
         except Exception as e:
@@ -123,8 +129,7 @@ def process_and_load_trip_data_to_gcp(data, logical_date):
         mime_type='application/octet-stream'
     )
 
-    logging.info(
-        f"Arquivo Parquet enviado para o bucket GCP: sianet/viagens_programadas/viagens_programadas_{logical_date.strftime('%Y-%m-%d')}.parquet")
+    logging.info(f"Arquivo Parquet enviado para o bucket GCP: sianet/viagens_programadas/viagens_programadas_{logical_date.strftime('%Y-%m-%d')}.parquet")
 
 
 def insert_dag_metadata_schedule(**kwargs):
