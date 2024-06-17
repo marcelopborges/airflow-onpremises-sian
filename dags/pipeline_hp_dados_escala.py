@@ -22,9 +22,11 @@ token_data = {
     "timestamp": None
 }
 
+
 def generate_hash(*args):
     hash_input = "".join(args)
     return hashlib.sha256(hash_input.encode('utf-8')).hexdigest()
+
 
 def convert_datetime_with_time(date_str):
     if date_str is None:
@@ -35,6 +37,7 @@ def convert_datetime_with_time(date_str):
         logging.error(f"Data e hora fornecida inválida: {date_str}")
         return None
 
+
 def convert_datetime_without_time(date_str):
     if date_str is None:
         return None
@@ -43,6 +46,7 @@ def convert_datetime_without_time(date_str):
     except ValueError:
         logging.error(f"Data fornecida inválida: {date_str}")
         return None
+
 
 def get_token_sianet():
     global token_data
@@ -63,6 +67,7 @@ def get_token_sianet():
         else:
             raise Exception(f"Failed to get token: HTTP {response.status_code}")
 
+
 def get_data_trip_made_sianet(**kwargs):
     logical_date = kwargs['logical_date']
     logical_date = logical_date - timedelta(days=1)
@@ -81,6 +86,7 @@ def get_data_trip_made_sianet(**kwargs):
     else:
         raise Exception(f"Failed to get data: HTTP {response.status_code}")
 
+
 def process_and_load_trip_data_to_gcp(data, logical_date):
     rows_to_insert = []
     for entry in data:
@@ -92,8 +98,10 @@ def process_and_load_trip_data_to_gcp(data, logical_date):
                 "re": entry.get('RE'),
                 "nome": entry.get('NOME'),
                 "dthr_saida": convert_datetime_with_time(entry.get('DTHR_SAIDA')) if entry.get('DTHR_SAIDA') else None,
-                "dthr_retorno": convert_datetime_with_time(entry.get('DTHR_RETORNO')) if entry.get('DTHR_RETORNO') else None,
-                "dthr_chegada": convert_datetime_with_time(entry.get('DTHR_CHEGADA')) if entry.get('DTHR_CHEGADA') else None
+                "dthr_retorno": convert_datetime_with_time(entry.get('DTHR_RETORNO')) if entry.get(
+                    'DTHR_RETORNO') else None,
+                "dthr_chegada": convert_datetime_with_time(entry.get('DTHR_CHEGADA')) if entry.get(
+                    'DTHR_CHEGADA') else None
             }
             rows_to_insert.append(row)
         except Exception as e:
@@ -115,7 +123,9 @@ def process_and_load_trip_data_to_gcp(data, logical_date):
         mime_type='application/octet-stream'
     )
 
-    logging.info(f"Arquivo Parquet enviado para o bucket GCP: sianet/viagens_programadas/viagens_programadas_{logical_date.strftime('%Y-%m-%d')}.parquet")
+    logging.info(
+        f"Arquivo Parquet enviado para o bucket GCP: sianet/viagens_programadas/viagens_programadas_{logical_date.strftime('%Y-%m-%d')}.parquet")
+
 
 def insert_dag_metadata_schedule(**kwargs):
     ti = kwargs['ti']
@@ -151,19 +161,23 @@ def insert_dag_metadata_schedule(**kwargs):
         mime_type='application/json'
     )
 
-    logging.info(f"Arquivo JSON de metadados enviado para o bucket GCP: sianet/metadata/pipeline_hp_sianet_{kwargs['ds']}.json")
+    logging.info(
+        f"Arquivo JSON de metadados enviado para o bucket GCP: sianet/metadata/pipeline_hp_sianet_{kwargs['ds']}.json")
+
 
 def mark_start(**context):
     start = datetime.now()
     context['ti'].xcom_push(key='start_time', value=start)
     print(f"Mark start at {start}")
 
+
 def mark_end(**context):
     end = datetime.now()
     context['ti'].xcom_push(key='end_time', value=end)
     print(f"Mark end at {end}")
 
-@dag(start_date=datetime(2024, 2, 26), schedule='30 11 * * *', catchup=True,
+
+@dag(start_date=datetime(2024, 2, 26), schedule='00 11 * * *', catchup=True,
      tags=['airbyte', 'HP', 'Sianet'])
 def pipeline_hp_sianet_scheduler():
     start = EmptyOperator(task_id='start')
@@ -205,5 +219,6 @@ def pipeline_hp_sianet_scheduler():
     end = EmptyOperator(task_id='end')
 
     start >> start_task >> get_token >> get_data_line >> end_task >> create_metadata_schedule >> end
+
 
 dag = pipeline_hp_sianet_scheduler()
