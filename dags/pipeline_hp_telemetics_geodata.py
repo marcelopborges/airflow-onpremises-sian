@@ -13,6 +13,7 @@ import pandas as pd
 from google.cloud import storage
 from io import BytesIO
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
+from datetime import datetime, timedelta, timezone
 
 # Variables
 last_call_timestamp = None
@@ -26,6 +27,7 @@ token_data = {
     "token": None,
     "timestamp": None
 }
+
 
 def get_token_bearer():
     global token_data
@@ -52,9 +54,11 @@ def get_token_bearer():
         else:
             raise Exception(f"Failed to get token: HTTP {response.status_code}")
 
+
 def generate_hash(*args):
     hash_input = "".join(args)
     return hashlib.sha256(hash_input.encode('utf-8')).hexdigest()
+
 
 def get_geodata(**kwargs):
     global last_call_timestamp
@@ -65,11 +69,17 @@ def get_geodata(**kwargs):
             time_to_wait = min_interval - elapsed_time
             time.sleep(time_to_wait)
     last_call_timestamp = time.time()
-    execution_date = kwargs['logical_date']
-    execution_date = execution_date - timedelta(days=1)  # requisição D-1
-    logging.info(f"Execution date: {execution_date}")
+
+    # Ajustar o execution_date para o timezone correto
+    execution_date = kwargs['logical_date'].replace(tzinfo=timezone.utc)
+    execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo')) - timedelta(days=1)
+
+    logging.info(f"Logical execution date: {kwargs['logical_date']}")
+    logging.info(f"Adjusted execution date for data fetch: {execution_date}")
+
     formatted_date = execution_date.strftime("%Y%m%d")
-    logging.info(f"Execution date: {formatted_date}")
+    logging.info(f"Formatted execution date: {formatted_date}")
+
     url_stream = f"https://integrate.us.mixtelematics.com/api/geodata/assetmovements/{hp_mix_group_id}/{formatted_date}000000/{formatted_date}235959"
     headers = {"Authorization": f"Bearer {get_token_bearer()}"}
     response = get(url_stream, headers=headers)
@@ -78,14 +88,18 @@ def get_geodata(**kwargs):
     else:
         raise Exception(f"Failed to get geodata: HTTP {response.status_code}")
 
+
 def process_and_load_geodata_to_gcp(**kwargs):
-    execution_date = kwargs['logical_date']
+    # Ajustar o execution_date para o timezone correto
+    execution_date = kwargs['logical_date'].replace(tzinfo=timezone.utc)
+    execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo')) - timedelta(days=1)
+
     geodata_json = kwargs['ti'].xcom_pull(task_ids='get_geodata')
     data = json.loads(geodata_json)
-    execution_date = execution_date - timedelta(days=1)
-    formatted_date = execution_date.strftime("%Y-%m-%d")
-    features = data.get("features", [])
 
+    formatted_date = execution_date.strftime("%Y-%m-%d")
+
+    features = data.get("features", [])
     records = []
     for feature in features:
         properties = feature.get("properties", {})
@@ -124,6 +138,7 @@ def process_and_load_geodata_to_gcp(**kwargs):
     )
 
     logging.info(f"Arquivo Parquet enviado para o bucket GCP: geodata_{formatted_date}.parquet")
+
 
 def insert_dag_metadata(**kwargs):
     ti = kwargs['ti']
@@ -164,17 +179,21 @@ def insert_dag_metadata(**kwargs):
         mime_type='application/json'
     )
 
-    logging.info(f"Arquivo JSON de metadados enviado para o bucket GCP: pipeline_hp_mix_telemetics_{execution_date}.json")
+    logging.info(
+        f"Arquivo JSON de metadados enviado para o bucket GCP: pipeline_hp_mix_telemetics_{execution_date}.json")
+
 
 def mark_start(**context):
     start = datetime.now()
     context['ti'].xcom_push(key='start_time', value=start)
     print(f"Mark start at {start}")
 
+
 def mark_end(**context):
     end = datetime.now()
     context['ti'].xcom_push(key='end_time', value=end)
     print(f"Mark end at {end}")
+
 
 @dag(start_date=datetime(2024, 2, 26), schedule='30 11 * * *', catchup=True,
      tags=['airbyte', 'HP', 'Mix-Telematics'])
@@ -225,5 +244,6 @@ def pipeline_hp_mix_telemetics_geodata():
     end = EmptyOperator(task_id='end')
 
     start >> start_task >> get_bearer_token >> get_data >> process_data >> end_task >> create_metadata >> end
+
 
 dag = pipeline_hp_mix_telemetics_geodata()
