@@ -195,7 +195,9 @@ def mark_end(**context):
     print(f"Mark end at {end}")
 
 
-@dag(start_date=datetime(2024, 2, 26), schedule='30 11 * * *', catchup=True,
+@dag(start_date=datetime(2024, 2, 26),
+     schedule='30 11 * * *',
+     catchup=False,
      tags=['airbyte', 'HP', 'Mix-Telematics'])
 def pipeline_hp_mix_telemetics_geodata():
     start = EmptyOperator(task_id='start')
