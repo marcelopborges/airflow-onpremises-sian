@@ -182,8 +182,13 @@ def mark_end(**context):
     print(f"Mark end at {end}")
 
 
-@dag(start_date=datetime(2024, 2, 26), schedule='00 11 * * *', catchup=True,
-     tags=['airbyte', 'HP', 'Sianet'])
+@dag(
+    start_date=datetime(2024, 2, 26),
+    schedule_interval='30 11 * * *',
+    catchup=False,
+    max_active_runs=1,
+    tags=['airbyte', 'HP', 'Mix-Telematics']
+)
 def pipeline_hp_sianet_scheduler():
     start = EmptyOperator(task_id='start')
     start_task = PythonOperator(
