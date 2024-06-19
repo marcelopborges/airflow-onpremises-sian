@@ -72,7 +72,7 @@ def get_geodata(**kwargs):
 
     # Ajustar o execution_date para o timezone correto
     execution_date = kwargs['logical_date'].replace(tzinfo=timezone.utc)
-    execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo')) - timedelta(days=1)
+    execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo'))
 
     logging.info(f"Logical execution date: {kwargs['logical_date']}")
     logging.info(f"Adjusted execution date for data fetch: {execution_date}")
