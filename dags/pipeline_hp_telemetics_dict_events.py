@@ -93,6 +93,8 @@ def transmission_gcp(**kwargs):
     dict_events_json = kwargs['ti'].xcom_pull(task_ids='get_dict_events')
     data = json.loads(dict_events_json)
     df_dict_events = pd.DataFrame.from_dict(data)
+    list_events = df_dict_events[df_dict_events['Description'].str.contains('HP')]['EventTypeId'].tolist()
+    Variable.set("hp_mix_list_events", json.dumps(list_events))
     #Transmitindo os dados por BytesIO
     buffer = BytesIO()
     df_dict_events.to_parquet(buffer, index=False)
