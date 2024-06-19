@@ -194,8 +194,8 @@ def mark_end(**context):
     context['ti'].xcom_push(key='end_time', value=end)
     print(f"Mark end at {end}")
 
-    # @dag(start_date=datetime(2024, 2, 26),
-@dag(start_date=datetime(2024, 6, 18),
+
+@dag(start_date=datetime(2024, 2, 26),
      schedule='30 11 * * *',
      catchup=True,
      tags=['airbyte', 'HP', 'Mix-Telematics'])
