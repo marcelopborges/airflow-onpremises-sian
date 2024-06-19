@@ -219,4 +219,4 @@ def pipeline_hp_mix_telemetics_dict_events():
     start >> start_task >> get_bearer_token >> get_data >> transmission_data >> end_task >> create_metadata >> end
 
 
-dag = pipeline_hp_mix_telemetics_geodata()
+dag = pipeline_hp_mix_telemetics_dict_events()
