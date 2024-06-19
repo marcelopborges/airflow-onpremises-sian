@@ -170,7 +170,7 @@ def mark_end(**context):
      schedule='30 11 * * *',
      catchup=True,
      tags=['airbyte', 'HP', 'Mix-Telematics'])
-def pipeline_hp_mix_telemetics_geodata():
+def pipeline_hp_mix_telemetics_dict_events():
     start = EmptyOperator(task_id='start')
 
     start_task = PythonOperator(
