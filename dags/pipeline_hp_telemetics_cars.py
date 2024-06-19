@@ -196,7 +196,7 @@ def pipeline_hp_mix_telemetics_cars():
     )
 
     get_data = PythonOperator(
-        task_id='get_dict_events',
+        task_id='get_cars',
         python_callable=get_cars,
         provide_context=True,
         retries=3,
