@@ -91,7 +91,6 @@ def transmission_gcp(**kwargs):
     cars_json = kwargs['ti'].xcom_pull(task_ids='get_cars')
     if not cars_json:
         raise ValueError("Nenhum dado foi retornado pelo XCOM.")
-
     try:
         data = json.loads(cars_json)
     except json.JSONDecodeError as e:
@@ -102,6 +101,8 @@ def transmission_gcp(**kwargs):
 
     # Convertendo para DataFrame
     df_cars = pd.DataFrame.from_dict(data)
+    asset_ids = df_cars['AssetId'].tolist()
+    Variable.set("hp_mix_list_car", json.dumps(asset_ids))
     #Transmitindo os dados por BytesIO
     buffer = BytesIO()
     df_cars.to_parquet(buffer, index=False)
