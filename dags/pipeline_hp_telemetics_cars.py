@@ -88,9 +88,19 @@ def get_cars(**kwargs):
         raise Exception(f"Failed to get geodata: HTTP {response.status_code}")
 
 def transmission_gcp(**kwargs):
-    #Recebendo dados do XCOM e convertendo para dataframe
     cars_json = kwargs['ti'].xcom_pull(task_ids='get_cars')
-    data = json.loads(cars_json)
+    if not cars_json:
+        raise ValueError("Nenhum dado foi retornado pelo XCOM.")
+
+    try:
+        data = json.loads(cars_json)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Erro ao decodificar JSON: {str(e)}")
+
+    if not isinstance(data, list):
+        raise ValueError("Os dados JSON não estão no formato esperado (lista).")
+
+    # Convertendo para DataFrame
     df_cars = pd.DataFrame.from_dict(data)
     #Transmitindo os dados por BytesIO
     buffer = BytesIO()
