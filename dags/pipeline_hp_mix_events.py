@@ -92,14 +92,15 @@ def get_events(**kwargs):
         "Authorization": f"Bearer {get_token_bearer()}"
     }
     response = post(url_stream, headers=headers, data=payload)
+
     if response.status_code == 200:
         return response.text
     else:
-        raise Exception(f"Failed to get geodata: HTTP {response.status_code}")
         logging.info(f"Response Status Code: {response.status_code}")
         logging.info(f"Response Text: {response.text}")
         logging.info(f"Request Payload: {payload}")
         raise Exception(f"Failed to get geodata: HTTP {response.status_code}")
+
 
 
 def transmission_gcp(**kwargs):
