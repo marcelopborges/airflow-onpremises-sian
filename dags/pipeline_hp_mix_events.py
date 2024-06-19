@@ -173,69 +173,69 @@ def insert_dag_metadata(**kwargs):
     logging.info(
         f"Arquivo JSON de metadados enviado para o bucket GCP: pipeline_hp_telemetics_events_{execution_date}.json")
 
-    def mark_start(**context):
-        start = datetime.now()
-        context['ti'].xcom_push(key='start_time', value=start)
-        print(f"Mark start at {start}")
+def mark_start(**context):
+    start = datetime.now()
+    context['ti'].xcom_push(key='start_time', value=start)
+    print(f"Mark start at {start}")
 
-    def mark_end(**context):
-        end = datetime.now()
-        context['ti'].xcom_push(key='end_time', value=end)
-        print(f"Mark end at {end}")
+def mark_end(**context):
+    end = datetime.now()
+    context['ti'].xcom_push(key='end_time', value=end)
+    print(f"Mark end at {end}")
 
     # @dag(start_date=datetime(2024, 2, 26),
-    @dag(start_date=datetime(2024, 6, 18),
-         schedule='30 11 * * *',
-         catchup=True,
-         tags=['airbyte', 'HP', 'Mix-Telematics'])
-    def pipeline_hp_mix_telemetics_events():
-        start = EmptyOperator(task_id='start')
+@dag(start_date=datetime(2024, 6, 18),
+     schedule='30 11 * * *',
+     catchup=True,
+     tags=['airbyte', 'HP', 'Mix-Telematics'])
+def pipeline_hp_mix_telemetics_events():
+    start = EmptyOperator(task_id='start')
 
-        start_task = PythonOperator(
-            task_id='mark_start',
-            python_callable=mark_start,
-            provide_context=True,
-        )
+    start_task = PythonOperator(
+        task_id='mark_start',
+        python_callable=mark_start,
+        provide_context=True,
+    )
 
-        get_bearer_token = PythonOperator(
-            task_id='get_bearer_token',
-            python_callable=get_token_bearer,
-            retries=5,
-            retry_delay=timedelta(minutes=5)
-        )
+    get_bearer_token = PythonOperator(
+        task_id='get_bearer_token',
+        python_callable=get_token_bearer,
+        retries=5,
+        retry_delay=timedelta(minutes=5)
+    )
 
-        get_data = PythonOperator(
-            task_id='get_events',
-            python_callable=get_events,
-            provide_context=True,
-            retries=3,
-            retry_delay=timedelta(minutes=1)
-        )
+    get_data = PythonOperator(
+        task_id='get_events',
+        python_callable=get_events,
+        provide_context=True,
+        retries=3,
+        retry_delay=timedelta(minutes=1)
+    )
 
-        transmission_data = PythonOperator(
-            task_id='transmission_gcp',
-            python_callable=transmission_gcp,
-            provide_context=True,
-            retries=3,
-            retry_delay=timedelta(minutes=5)
-        )
+    transmission_data = PythonOperator(
+        task_id='transmission_gcp',
+        python_callable=transmission_gcp,
+        provide_context=True,
+        retries=3,
+        retry_delay=timedelta(minutes=5)
+    )
 
-        create_metadata = PythonOperator(
-            task_id='insert_dag_metadata',
-            python_callable=insert_dag_metadata,
-            provide_context=True,
-            retries=3,
-            retry_delay=timedelta(minutes=5)
-        )
-        end_task = PythonOperator(
-            task_id='mark_end',
-            python_callable=mark_end,
-            provide_context=True,
-        )
-        end = EmptyOperator(task_id='end')
+    create_metadata = PythonOperator(
+        task_id='insert_dag_metadata',
+        python_callable=insert_dag_metadata,
+        provide_context=True,
+        retries=3,
+        retry_delay=timedelta(minutes=5)
+    )
+    end_task = PythonOperator(
+        task_id='mark_end',
+        python_callable=mark_end,
+        provide_context=True,
+    )
+    end = EmptyOperator(task_id='end')
 
-        start >> start_task >> get_bearer_token >> get_data >> transmission_data >> end_task >> create_metadata >> end
+    start >> start_task >> get_bearer_token >> get_data >> transmission_data >> end_task >> create_metadata >> end
 
-    dag = pipeline_hp_mix_telemetics_events()
+dag = pipeline_hp_mix_telemetics_events()
 
 
