@@ -81,9 +81,15 @@ def get_events(**kwargs):
     logging.info(f"Formatted execution date: {formatted_date}")
 
     url_stream = f"https://integrate.us.mixtelematics.com/api/events/assets/from/{formatted_date}000000/to/{formatted_date}235959"
+    entity_ids_str = Variable.get("hp_mix_list_car")
+    event_type_ids_str = Variable.get('hp_mix_list_events')
+    entity_ids = json.loads(entity_ids_str)
+    event_type_ids = json.loads(event_type_ids_str)
+    logging.info(f"EntityIds: {entity_ids}")
+    logging.info(f"EventTypeIds: {event_type_ids}")
     event_filter = {
-        "EntityIds": Variable.get("hp_mix_list_car"),
-        "EventTypeIds": Variable.get('hp_mix_list_events'),
+        "EntityIds": entity_ids,
+        "EventTypeIds": event_type_ids,
         "MenuId": "string"
     }
     payload = json.dumps(event_filter)
