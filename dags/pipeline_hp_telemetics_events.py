@@ -15,6 +15,7 @@ from io import BytesIO
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
 from datetime import datetime, timedelta, timezone
 
+
 # Variables
 last_call_timestamp = None
 hp_mix_url_identity = Variable.get("hp_mix_url_identity")
@@ -27,7 +28,6 @@ token_data = {
     "token": None,
     "timestamp": None
 }
-
 
 def get_token_bearer():
     global token_data
@@ -60,7 +60,7 @@ def generate_hash(*args):
     return hashlib.sha256(hash_input.encode('utf-8')).hexdigest()
 
 
-def get_geodata(**kwargs):
+def get_dict_events(**kwargs):
     global last_call_timestamp
     min_interval = 60 / 7  # limite imposto de 7 requisições por minuto segundo documentação
     if last_call_timestamp is not None:
@@ -80,7 +80,7 @@ def get_geodata(**kwargs):
     formatted_date = execution_date.strftime("%Y%m%d")
     logging.info(f"Formatted execution date: {formatted_date}")
 
-    url_stream = f"https://integrate.us.mixtelematics.com/api/geodata/assetmovements/{hp_mix_group_id}/{formatted_date}000000/{formatted_date}235959"
+    url_stream = f"https://integrate.us.mixtelematics.com/api/libraryevents/organisation/{hp_mix_group_id}"
     headers = {"Authorization": f"Bearer {get_token_bearer()}"}
     response = get(url_stream, headers=headers)
     if response.status_code == 200:
@@ -88,58 +88,30 @@ def get_geodata(**kwargs):
     else:
         raise Exception(f"Failed to get geodata: HTTP {response.status_code}")
 
-
-def process_and_load_geodata_to_gcp(**kwargs):
-    execution_date = kwargs['logical_date'].replace(tzinfo=timezone.utc)
-    execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo')) - timedelta(days=1)
-
-    geodata_json = kwargs['ti'].xcom_pull(task_ids='get_geodata')
-    data = json.loads(geodata_json)
-
-    formatted_date = execution_date.strftime("%Y-%m-%d")
-
-    features = data.get("features", [])
-    records = []
-    for feature in features:
-        properties = feature.get("properties", {})
-        geometry = feature.get("geometry", {})
-
-        registration = properties.get("Registration", "")
-        description = properties.get("Description", "")
-        geometry_type = geometry.get("type", "")
-        coordinates = json.dumps(geometry.get("coordinates", []))
-        unique_hash = generate_hash(registration, description, formatted_date)
-
-        record = {
-            "registration": registration,
-            "description": description,
-            "geometry_type": geometry_type,
-            "coordinates": coordinates,
-            "execution_date": formatted_date,
-            "hash": unique_hash
-        }
-        records.append(record)
-
-    df = pd.DataFrame(records)
-
-    # Salva o DataFrame em formato Parquet no buffer
+def transmission_gcp(**kwargs):
+    #Recebendo dados do XCOM e convertendo para dataframe
+    dict_events_json = kwargs['ti'].xcom_pull(task_ids='get_dict_events')
+    data = json.loads(dict_events_json)
+    df_dict_events = pd.DataFrame.from_dict(data)
+    #Transmitindo os dados por BytesIO
     buffer = BytesIO()
-    df.to_parquet(buffer, index=False)
+    df_dict_events.to_parquet(buffer, index=False)
     buffer.seek(0)
-
-    # Envia o arquivo Parquet diretamente para o bucket GCP usando GCSHook
+    #Enviando para GCP
     gcs_hook = GCSHook(gcp_conn_id='gcp')
     gcs_hook.upload(
         bucket_name=hp_gcp_bucket_name_raw,
-        object_name=f"mix/geodata/geodata_{formatted_date}.parquet",
+        object_name=f"mix/dict_events/dict_events.parquet",
         data=buffer.getvalue(),
         mime_type='application/octet-stream'
     )
 
-    logging.info(f"Arquivo Parquet enviado para o bucket GCP: geodata_{formatted_date}.parquet")
+    logging.info(f"Arquivo Parquet enviado para o bucket GCP: dict_events.parquet")
 
 
 def insert_dag_metadata(**kwargs):
+    execution_date = kwargs['logical_date'].replace(tzinfo=timezone.utc)
+    execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo')) - timedelta(days=1)
     ti = kwargs['ti']
     start_time = ti.xcom_pull(key='start_time', task_ids='mark_start')
     end_time = ti.xcom_pull(key='end_time', task_ids='mark_end')
@@ -173,13 +145,13 @@ def insert_dag_metadata(**kwargs):
     gcs_hook = GCSHook(gcp_conn_id='gcp')
     gcs_hook.upload(
         bucket_name=hp_gcp_bucket_name_raw,
-        object_name=f"mix/metadata/pipeline_hp_mix_telemetics/pipeline_hp_mix_telemetics_{execution_date}.json",
+        object_name=f"mix/metadata/dict_events/pipeline_hp_telemetics_events_{execution_date}.json",
         data=metadata_buffer.getvalue(),
         mime_type='application/json'
     )
 
     logging.info(
-        f"Arquivo JSON de metadados enviado para o bucket GCP: pipeline_hp_mix_telemetics_{execution_date}.json")
+        f"Arquivo JSON de metadados enviado para o bucket GCP: pipeline_hp_telemetics_events_{execution_date}.json")
 
 
 def mark_start(**context):
@@ -194,7 +166,7 @@ def mark_end(**context):
     print(f"Mark end at {end}")
 
 
-@dag(start_date=datetime(2024, 2, 26),
+@dag(start_date=datetime(2024, 6, 18),
      schedule='30 11 * * *',
      catchup=True,
      tags=['airbyte', 'HP', 'Mix-Telematics'])
@@ -215,26 +187,26 @@ def pipeline_hp_mix_telemetics_geodata():
     )
 
     get_data = PythonOperator(
-        task_id='get_geodata',
-        python_callable=get_geodata,
+        task_id='get_dict_events',
+        python_callable=get_dict_events,
         provide_context=True,
         retries=3,
         retry_delay=timedelta(minutes=1)
     )
 
-    process_data = PythonOperator(
-        task_id='process_data',
-        python_callable=process_and_load_geodata_to_gcp,
+    transmission_data = PythonOperator(
+        task_id='transmission_gcp',
+        python_callable=transmission_gcp,
         provide_context=True,
-        retries=5,
+        retries=3,
         retry_delay=timedelta(minutes=5)
     )
 
     create_metadata = PythonOperator(
-        task_id='create_metadata',
+        task_id='insert_dag_metadata',
         python_callable=insert_dag_metadata,
         provide_context=True,
-        retries=5,
+        retries=3,
         retry_delay=timedelta(minutes=5)
     )
     end_task = PythonOperator(
@@ -244,7 +216,7 @@ def pipeline_hp_mix_telemetics_geodata():
     )
     end = EmptyOperator(task_id='end')
 
-    start >> start_task >> get_bearer_token >> get_data >> process_data >> end_task >> create_metadata >> end
+    start >> start_task >> get_bearer_token >> get_data >> transmission_data >> end_task >> create_metadata >> end
 
 
 dag = pipeline_hp_mix_telemetics_geodata()
