@@ -92,7 +92,6 @@ def get_data_trip_made_sianet(**kwargs):
         raise Exception(f"Failed to get data: HTTP {response.status_code}")
 
 
-
 def process_and_load_trip_data_to_gcp(data, logical_date):
     logging.info(f"Processing data for logical_date (D-1): {logical_date}")
 
