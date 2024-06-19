@@ -72,7 +72,7 @@ def get_data_trip_made_sianet(**kwargs):
     logical_date = kwargs['logical_date']
     logging.info(f"Original logical_date: {logical_date}")
 
-    logical_date = logical_date - timedelta(days=1)
+    logical_date = logical_date
     logging.info(f"Adjusted logical_date (D-1): {logical_date}")
 
     formatted_date = logical_date.strftime("%d/%m/%Y")
