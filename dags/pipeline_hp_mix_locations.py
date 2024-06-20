@@ -133,12 +133,11 @@ def insert_dag_metadata(**kwargs):
 
     dag_id = kwargs['dag_run'].dag_id
 
-
     metadata = {
         "dag_id": dag_id,
-        "execution_date": execution_date,
-        "start_date": str(start_time),
-        "end_date": str(end_time),
+        "execution_date": str(execution_date),  # Convertendo para string
+        "start_date": str(start_time),  # Convertendo para string
+        "end_date": str(end_time),  # Convertendo para string
         "duration": duration,
         "success": True,
         "error_message": None
@@ -160,6 +159,7 @@ def insert_dag_metadata(**kwargs):
 
     logging.info(
         f"Arquivo JSON de metadados enviado para o bucket GCP: pipeline_hp_telemetics_cars_{formatted_date}.json")
+
 
 
 def mark_start(**context):
