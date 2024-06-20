@@ -150,13 +150,14 @@ def insert_dag_metadata(**kwargs):
 
     dag_id = kwargs['dag_run'].dag_id
     execution_date = kwargs['logical_date'].replace(tzinfo=timezone.utc)
-    execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo'))
-    formatted_date = execution_date.strftime("%Y-%m-%d")
+    execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo')).isoformat()
+    formatted_date = execution_date[:10]  # yyyy-mm-dd
+
     metadata = {
         "dag_id": dag_id,
         "execution_date": execution_date,
-        "start_date": str(start_time),
-        "end_date": str(end_time),
+        "start_date": start_time.isoformat(),
+        "end_date": end_time.isoformat(),
         "duration": duration,
         "success": True,
         "error_message": None
@@ -178,6 +179,7 @@ def insert_dag_metadata(**kwargs):
 
     logging.info(
         f"Arquivo JSON de metadados enviado para o bucket GCP: pipeline_hp_mix_telemetics_{formatted_date}.json")
+
 
 
 def mark_start(**context):
