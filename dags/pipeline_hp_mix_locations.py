@@ -178,7 +178,7 @@ def mark_end(**context):
      schedule='20 9 * * *',
      catchup=True,
      tags=['airbyte', 'HP', 'Mix-Telematics'])
-def pipeline_hp_mix_telemetics_cars():
+def pipeline_hp_mix_telemetics_locations():
     start = EmptyOperator(task_id='start')
 
     start_task = PythonOperator(
@@ -227,4 +227,4 @@ def pipeline_hp_mix_telemetics_cars():
     start >> start_task >> get_bearer_token >> get_data >> transmission_data >> end_task >> create_metadata >> end
 
 
-dag = pipeline_hp_mix_telemetics_cars()
+dag = pipeline_hp_mix_telemetics_locations()
