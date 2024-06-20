@@ -112,6 +112,7 @@ def get_events(**kwargs):
 def transmission_gcp(**kwargs):
     execution_date = kwargs['logical_date'].replace(tzinfo=timezone.utc)
     execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo'))
+    formatted_date = execution_date.strftime("%Y%m%d")
     events_json = kwargs['ti'].xcom_pull(task_ids='get_events')
     if not events_json:
         raise ValueError("Nenhum dado foi retornado pelo XCOM.")
@@ -133,7 +134,7 @@ def transmission_gcp(**kwargs):
     gcs_hook = GCSHook(gcp_conn_id='gcp')
     gcs_hook.upload(
         bucket_name=hp_gcp_bucket_name_raw,
-        object_name=f"mix/events/events_{execution_date}.parquet",
+        object_name=f"mix/events/events_{formatted_date}.parquet",
         data=buffer.getvalue(),
         mime_type='application/octet-stream'
     )
@@ -142,7 +143,8 @@ def transmission_gcp(**kwargs):
 
 def insert_dag_metadata(**kwargs):
     execution_date = kwargs['logical_date'].replace(tzinfo=timezone.utc)
-    execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo')) - timedelta(days=1)
+    execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo'))
+    formatted_date = execution_date.strftime("%Y%m%d")
     ti = kwargs['ti']
     start_time = ti.xcom_pull(key='start_time', task_ids='mark_start')
     end_time = ti.xcom_pull(key='end_time', task_ids='mark_end')
@@ -176,13 +178,13 @@ def insert_dag_metadata(**kwargs):
     gcs_hook = GCSHook(gcp_conn_id='gcp')
     gcs_hook.upload(
         bucket_name=hp_gcp_bucket_name_raw,
-        object_name=f"mix/metadata/events/pipeline_hp_telemetics_events_{execution_date}.json",
+        object_name=f"mix/metadata/events/pipeline_hp_telemetics_events_{formatted_date}.json",
         data=metadata_buffer.getvalue(),
         mime_type='application/json'
     )
 
     logging.info(
-        f"Arquivo JSON de metadados enviado para o bucket GCP: pipeline_hp_telemetics_events_{execution_date}.json")
+        f"Arquivo JSON de metadados enviado para o bucket GCP: pipeline_hp_telemetics_events_{formatted_date}.json")
 
 def mark_start(**context):
     start = datetime.now()

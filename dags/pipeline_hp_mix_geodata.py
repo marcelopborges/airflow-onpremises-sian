@@ -91,13 +91,10 @@ def get_geodata(**kwargs):
 
 def process_and_load_geodata_to_gcp(**kwargs):
     execution_date = kwargs['logical_date'].replace(tzinfo=timezone.utc)
-    execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo')) - timedelta(days=1)
-
+    execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo'))
     geodata_json = kwargs['ti'].xcom_pull(task_ids='get_geodata')
     data = json.loads(geodata_json)
-
     formatted_date = execution_date.strftime("%Y-%m-%d")
-
     features = data.get("features", [])
     records = []
     for feature in features:
@@ -153,7 +150,7 @@ def insert_dag_metadata(**kwargs):
 
     dag_id = kwargs['dag_run'].dag_id
     execution_date = kwargs['ds']
-
+    formatted_date = execution_date.strftime("%Y%m%d")
     metadata = {
         "dag_id": dag_id,
         "execution_date": execution_date,
@@ -173,13 +170,13 @@ def insert_dag_metadata(**kwargs):
     gcs_hook = GCSHook(gcp_conn_id='gcp')
     gcs_hook.upload(
         bucket_name=hp_gcp_bucket_name_raw,
-        object_name=f"mix/metadata/pipeline_hp_mix_telemetics/pipeline_hp_mix_telemetics_{execution_date}.json",
+        object_name=f"mix/metadata/pipeline_hp_mix_telemetics/pipeline_hp_mix_telemetics_{formatted_date}.json",
         data=metadata_buffer.getvalue(),
         mime_type='application/json'
     )
 
     logging.info(
-        f"Arquivo JSON de metadados enviado para o bucket GCP: pipeline_hp_mix_telemetics_{execution_date}.json")
+        f"Arquivo JSON de metadados enviado para o bucket GCP: pipeline_hp_mix_telemetics_{formatted_date}.json")
 
 
 def mark_start(**context):
