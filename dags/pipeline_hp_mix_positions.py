@@ -15,7 +15,6 @@ from io import BytesIO
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
 from datetime import datetime, timedelta, timezone
 
-
 # Variables
 last_call_timestamp = None
 hp_mix_url_identity = Variable.get("hp_mix_url_identity")
@@ -28,6 +27,7 @@ token_data = {
     "token": None,
     "timestamp": None
 }
+
 
 def get_token_bearer():
     global token_data
@@ -101,7 +101,6 @@ def get_positions(**kwargs):
         raise Exception(f"Failed to get geodata: HTTP {response.status_code}")
 
 
-
 def transmission_gcp(**kwargs):
     execution_date = kwargs['logical_date'].replace(tzinfo=timezone.utc)
     execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo'))
@@ -133,6 +132,7 @@ def transmission_gcp(**kwargs):
     )
 
     logging.info(f"Arquivo Parquet enviado para o bucket GCP: cars.parquet")
+
 
 def insert_dag_metadata(**kwargs):
     execution_date = kwargs['logical_date'].replace(tzinfo=timezone.utc)
@@ -179,10 +179,12 @@ def insert_dag_metadata(**kwargs):
     logging.info(
         f"Arquivo JSON de metadados enviado para o bucket GCP: pipeline_hp_telemetics_positions_{formatted_date}.json")
 
+
 def mark_start(**context):
     start = datetime.now()
     context['ti'].xcom_push(key='start_time', value=start)
     print(f"Mark start at {start}")
+
 
 def mark_end(**context):
     end = datetime.now()
@@ -242,6 +244,5 @@ def pipeline_hp_mix_telemetics_positions():
 
     start >> start_task >> get_bearer_token >> get_data >> transmission_data >> end_task >> create_metadata >> end
 
+
 dag = pipeline_hp_mix_telemetics_positions()
-
-
