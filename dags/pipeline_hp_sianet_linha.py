@@ -144,10 +144,10 @@ def mark_end(**context):
 
 
 @dag(start_date=datetime(2024, 4, 5),
-     schedule='30 11 * * *',
+     schedule='00 9 * * *',
      catchup=False,
      tags=['airbyte', 'HP', 'Sianet', 'Escala'])
-def pipeline_hp_sianet():
+def pipeline_hp_sianet_lines():
     start = EmptyOperator(task_id='start')
     start_task = PythonOperator(
         task_id='mark_start',
@@ -193,4 +193,4 @@ def pipeline_hp_sianet():
 
     start >> start_task >> get_token >> get_data_line >> insert_line >> end_task >> create_metadata_data_line >> end
 
-dag = pipeline_hp_sianet()
+dag = pipeline_hp_sianet_lines()

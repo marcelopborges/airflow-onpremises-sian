@@ -183,7 +183,7 @@ def mark_end(**context):
 
 @dag(
     start_date=datetime(2024, 2, 26),
-    schedule_interval='30 11 * * *',
+    schedule_interval='15 9 * * *',
     catchup=True,
     max_active_runs=1,
     tags=['airbyte', 'HP', 'Mix-Telematics']
