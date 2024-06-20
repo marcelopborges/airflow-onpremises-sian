@@ -198,7 +198,7 @@ def mark_end(**context):
 
 
 @dag(start_date=datetime(2024, 2, 26),
-     schedule='30 11 * * *',
+     schedule='35 9 * * *',
      catchup=True,
      tags=['airbyte', 'HP', 'Mix-Telematics'])
 def pipeline_hp_mix_telemetics_events():

@@ -144,7 +144,7 @@ def mark_end(**context):
 
 
 @dag(start_date=datetime(2024, 4, 5),
-     schedule='30 11 * * *',
+     schedule='00 9 * * *',
      catchup=False,
      tags=['airbyte', 'HP', 'Sianet', 'Escala'])
 def pipeline_hp_sianet():
