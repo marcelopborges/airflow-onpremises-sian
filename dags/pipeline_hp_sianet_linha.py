@@ -142,8 +142,9 @@ def mark_end(**context):
     context['ti'].xcom_push(key='end_time', value=end)
     print(f"Mark end at {end}")
 
+
 @dag(start_date=datetime(2024, 4, 5),
-     schedule=None,
+     schedule='30 11 * * *',
      catchup=False,
      tags=['airbyte', 'HP', 'Sianet', 'Escala'])
 def pipeline_hp_sianet():
