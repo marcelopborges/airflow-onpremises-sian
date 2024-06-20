@@ -170,7 +170,7 @@ def insert_dag_metadata(**kwargs):
     gcs_hook = GCSHook(gcp_conn_id='gcp')
     gcs_hook.upload(
         bucket_name=hp_gcp_bucket_name_raw,
-        object_name=f"mix/metadata/pipeline_hp_mix_telemetics/pipeline_hp_mix_telemetics_{formatted_date}.json",
+        object_name=f"mix/metadata/geodata/pipeline_hp_telemetics_geodata_{formatted_date}.json",
         data=metadata_buffer.getvalue(),
         mime_type='application/json'
     )
