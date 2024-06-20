@@ -105,7 +105,7 @@ def transmission_gcp(**kwargs):
     execution_date = kwargs['logical_date'].replace(tzinfo=timezone.utc)
     execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo'))
     formatted_date = execution_date.strftime("%Y%m%d")
-    events_json = kwargs['ti'].xcom_pull(task_ids='get_events')
+    events_json = kwargs['ti'].xcom_pull(task_ids='get_positions')
     if not events_json:
         raise ValueError("Nenhum dado foi retornado pelo XCOM.")
     try:
