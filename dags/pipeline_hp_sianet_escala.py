@@ -185,7 +185,6 @@ def mark_end(**context):
     start_date=datetime(2024, 2, 26),
     schedule_interval='15 9 * * *',
     catchup=True,
-    max_active_runs=1,
     tags=['airbyte', 'HP', 'Mix-Telematics']
 )
 def pipeline_hp_sianet_scheduler():
