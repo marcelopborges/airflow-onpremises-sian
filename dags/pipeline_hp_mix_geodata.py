@@ -149,8 +149,9 @@ def insert_dag_metadata(**kwargs):
     duration = (end_time - start_time).total_seconds()
 
     dag_id = kwargs['dag_run'].dag_id
-    execution_date = kwargs['ds']
-    formatted_date = execution_date.strftime("%Y%m%d")
+    execution_date = kwargs['logical_date'].replace(tzinfo=timezone.utc)
+    execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo'))
+    formatted_date = execution_date.strftime("%Y-%m-%d")
     metadata = {
         "dag_id": dag_id,
         "execution_date": execution_date,
