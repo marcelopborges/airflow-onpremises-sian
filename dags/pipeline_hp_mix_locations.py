@@ -118,7 +118,8 @@ def transmission_gcp(**kwargs):
 
 def insert_dag_metadata(**kwargs):
     execution_date = kwargs['logical_date'].replace(tzinfo=timezone.utc)
-    execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo')) - timedelta(days=1)
+    execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo'))
+    formatted_date = execution_date.strftime("%Y%m%d")
     ti = kwargs['ti']
     start_time = ti.xcom_pull(key='start_time', task_ids='mark_start')
     end_time = ti.xcom_pull(key='end_time', task_ids='mark_end')
@@ -131,7 +132,7 @@ def insert_dag_metadata(**kwargs):
     duration = (end_time - start_time).total_seconds()
 
     dag_id = kwargs['dag_run'].dag_id
-    execution_date = kwargs['ds']
+
 
     metadata = {
         "dag_id": dag_id,
@@ -152,13 +153,13 @@ def insert_dag_metadata(**kwargs):
     gcs_hook = GCSHook(gcp_conn_id='gcp')
     gcs_hook.upload(
         bucket_name=hp_gcp_bucket_name_raw,
-        object_name=f"mix/metadata/location/pipeline_hp_telemetics_location_{execution_date}.json",
+        object_name=f"mix/metadata/location/pipeline_hp_telemetics_location_{formatted_date}.json",
         data=metadata_buffer.getvalue(),
         mime_type='application/json'
     )
 
     logging.info(
-        f"Arquivo JSON de metadados enviado para o bucket GCP: pipeline_hp_telemetics_cars_{execution_date}.json")
+        f"Arquivo JSON de metadados enviado para o bucket GCP: pipeline_hp_telemetics_cars_{formatted_date}.json")
 
 
 def mark_start(**context):
