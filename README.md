@@ -21,6 +21,8 @@ Coleta de dados de múltiplas fontes.
 * Plataforma de Dashboard: Power BI.
 ### 4. Arquitetura da Solução
 * A arquitetura da solução consiste em uma combinação das ferramentas de ETL e de armazenamento e processamento de dados do Google Cloud Platform. A estrutura é organizada pela SIAN, e os dados são segregados por empresa cliente (HP, ITA, URBI), garantindo que apenas a SIAN tenha acesso a todos os dados, enquanto as empresas têm acesso apenas aos seus próprios dados.
+  
+![image](https://github.com/user-attachments/assets/0dbfe5fd-52f4-466d-b003-47180898250e)
 
 
 
