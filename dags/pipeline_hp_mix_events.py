@@ -274,7 +274,7 @@ def pipeline_hp_mix_telemetics_events():
     )
     end = EmptyOperator(task_id='end')
 
-    start >> start_task >> get_bearer_token >> get_data >> transmission_data >> end_task >> create_metadata >> atualizar_tabela_bigquery_task >> atualizar_tabela_bigquery_task >> end
+    start >> start_task >> get_bearer_token >> get_data >> transmission_data >> end_task >> create_metadata >> atualizar_tabela_bigquery_task >>  end
     
     
 dag = pipeline_hp_mix_telemetics_events()
