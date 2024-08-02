@@ -10,6 +10,8 @@ from requests import get, post
 from io import BytesIO
 import pandas as pd
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
+from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
+
 
 last_call_timestamp = None
 url_api_sianet = Variable.get("hp_sianet_url_api")
@@ -132,6 +134,25 @@ def insert_dag_metadata_dados_linha(**kwargs):
 
     logging.info(f"Arquivo JSON de metadados enviado para o bucket GCP: sianet/metadata/pipeline_hp_sianet_{kwargs['ds']}.json")
 
+def atualizar_tabela_bigquery(**kwargs):
+    execution_date = kwargs['logical_date'].replace(tzinfo=timezone.utc)
+    execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo'))
+    formatted_date = execution_date.strftime("%Y%m%d")
+
+    gcs_to_bigquery = GCSToBigQueryOperator(
+        task_id='atualizar_tabela_bigquery',
+        bucket=hp_gcp_bucket_name_raw,
+        source_objects=[f"mix/events/*.parquet"],
+        destination_project_dataset_table='gcp-hp-proj-operacao.dev.linhas',
+        source_format='PARQUET',
+        create_disposition='CREATE_IF_NEEDED',
+        write_disposition='WRITE_TRUNCATE',
+        autodetect=True,
+        gcp_conn_id='gcp'
+    )
+
+    return gcs_to_bigquery.execute(context=kwargs)
+
 def mark_start(**context):
     start = datetime.now()
     context['ti'].xcom_push(key='start_time', value=start)
@@ -184,6 +205,13 @@ def pipeline_hp_sianet_lines():
         retries=5,
         retry_delay=timedelta(minutes=5)
     )
+    atualizar_tabela_bigquery_task = PythonOperator(
+    task_id='atualizar_tabela_bigquery',
+    python_callable=atualizar_tabela_bigquery,
+    provide_context=True,
+    retries=3,
+    retry_delay=timedelta(minutes=5)
+)
     end_task = PythonOperator(
         task_id='mark_end',
         python_callable=mark_end,
@@ -191,6 +219,6 @@ def pipeline_hp_sianet_lines():
     )
     end = EmptyOperator(task_id='end')
 
-    start >> start_task >> get_token >> get_data_line >> insert_line >> end_task >> create_metadata_data_line >> end
+    start >> start_task >> get_token >> get_data_line >> insert_line >> end_task >> create_metadata_data_line >> atualizar_tabela_bigquery_task >> end
 
 dag = pipeline_hp_sianet_lines()
