@@ -219,7 +219,7 @@ def mark_end(**context):
 
 @dag(start_date=datetime(2024, 2, 26),
      schedule='35 9 * * *',
-     catchup=True,
+     catchup=False,
      tags=['airbyte', 'HP', 'Mix-Telematics'])
 def pipeline_hp_mix_telemetics_events_copy():
     start = EmptyOperator(task_id='start')
