@@ -171,7 +171,7 @@ def atualizar_tabela_bigquery(**kwargs):
     gcs_to_bigquery = GCSToBigQueryOperator(
         task_id='atualizar_tabela_bigquery',
         bucket=hp_gcp_bucket_name_raw,
-        source_objects=[f"mix/events/*.parquet"],
+        source_objects=[f"mix/cars/*.parquet"],
         destination_project_dataset_table='gcp-hp-proj-operacao.dev.cars',
         source_format='PARQUET',
         create_disposition='CREATE_IF_NEEDED',
