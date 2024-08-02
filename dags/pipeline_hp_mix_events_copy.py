@@ -196,7 +196,7 @@ def atualizar_tabela_bigquery(**kwargs):
         task_id='atualizar_tabela_bigquery',
         bucket=hp_gcp_bucket_name_raw,
         source_objects=[f"mix/events/events_{formatted_date}.parquet"],
-        destination_project_dataset_table='nome-do-projeto.nome-do-dataset.nome-da-tabela',
+        destination_project_dataset_table='gcp-hp-proj-operacao.dev.events',
         source_format='PARQUET',
         create_disposition='CREATE_IF_NEEDED',
         write_disposition='WRITE_TRUNCATE',
