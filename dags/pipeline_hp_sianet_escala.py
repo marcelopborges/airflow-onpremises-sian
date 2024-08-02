@@ -1,7 +1,7 @@
 import hashlib
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import requests
 from airflow.decorators import dag
 from airflow.models import Variable
