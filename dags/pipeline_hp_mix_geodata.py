@@ -14,6 +14,7 @@ from google.cloud import storage
 from io import BytesIO
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
 from datetime import datetime, timedelta, timezone
+from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
 
 # Variables
 last_call_timestamp = None
@@ -180,7 +181,24 @@ def insert_dag_metadata(**kwargs):
     logging.info(
         f"Arquivo JSON de metadados enviado para o bucket GCP: pipeline_hp_mix_telemetics_{formatted_date}.json")
 
+def atualizar_tabela_bigquery(**kwargs):
+    execution_date = kwargs['logical_date'].replace(tzinfo=timezone.utc)
+    execution_date = execution_date.astimezone(pytz.timezone('America/Sao_Paulo'))
+    formatted_date = execution_date.strftime("%Y%m%d")
 
+    gcs_to_bigquery = GCSToBigQueryOperator(
+        task_id='atualizar_tabela_bigquery',
+        bucket=hp_gcp_bucket_name_raw,
+        source_objects=[f"mix/events/*.parquet"],
+        destination_project_dataset_table='gcp-hp-proj-operacao.dev.geodata',
+        source_format='PARQUET',
+        create_disposition='CREATE_IF_NEEDED',
+        write_disposition='WRITE_TRUNCATE',
+        autodetect=True,
+        gcp_conn_id='gcp'
+    )
+
+    return gcs_to_bigquery.execute(context=kwargs)
 
 def mark_start(**context):
     start = datetime.now()
@@ -237,6 +255,13 @@ def pipeline_hp_mix_telemetics_geodata():
         retries=5,
         retry_delay=timedelta(minutes=5)
     )
+    atualizar_tabela_bigquery_task = PythonOperator(
+    task_id='atualizar_tabela_bigquery',
+    python_callable=atualizar_tabela_bigquery,
+    provide_context=True,
+    retries=3,
+    retry_delay=timedelta(minutes=5)
+)
     end_task = PythonOperator(
         task_id='mark_end',
         python_callable=mark_end,
@@ -244,7 +269,7 @@ def pipeline_hp_mix_telemetics_geodata():
     )
     end = EmptyOperator(task_id='end')
 
-    start >> start_task >> get_bearer_token >> get_data >> process_data >> end_task >> create_metadata >> end
+    start >> start_task >> get_bearer_token >> get_data >> process_data >> end_task >> create_metadata >> atualizar_tabela_bigquery_task >> end
 
 
 dag = pipeline_hp_mix_telemetics_geodata()
