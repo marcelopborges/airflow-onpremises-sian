@@ -252,6 +252,13 @@ def pipeline_hp_mix_telemetics_events_copy():
         retries=3,
         retry_delay=timedelta(minutes=5)
     )
+    atualizar_tabela_bigquery_task = PythonOperator(
+    task_id='atualizar_tabela_bigquery',
+    python_callable=atualizar_tabela_bigquery,
+    provide_context=True,
+    retries=3,
+    retry_delay=timedelta(minutes=5)
+)
 
     create_metadata = PythonOperator(
         task_id='insert_dag_metadata',
@@ -267,8 +274,8 @@ def pipeline_hp_mix_telemetics_events_copy():
     )
     end = EmptyOperator(task_id='end')
 
-    start >> start_task >> get_bearer_token >> get_data >> transmission_data >> end_task >> create_metadata >> atualizar_tabela_bigquery >> end
-
+    start >> start_task >> get_bearer_token >> get_data >> transmission_data >> end_task >> create_metadata >> atualizar_tabela_bigquery_task >> end
+    
 dag = pipeline_hp_mix_telemetics_events_copy()
 
 
